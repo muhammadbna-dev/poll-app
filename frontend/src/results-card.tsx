@@ -1,33 +1,10 @@
 import { Card, CardTitle, CardContent } from "@/components/ui/card"
-import { Poll, Result } from "@/types"
-import { useEffect, useState } from "react"
+import { Poll } from "@/types"
+import { useGetResults } from "@/useGetResults"
 
 // TODO: Works only for one question for now
 const ResultsCard = ({ poll, }: { poll: Poll | undefined }) => {
-  const [result, setResult] = useState<Result>()
-
-  const getResults = async () => {
-    try {
-      const data = await fetch(`api/result/generate`, {
-        method: "POST",
-        body: JSON.stringify({
-          pollId: poll?._id,
-          questionId: poll?.questions[0]._id
-        })
-      })
-      const json = await data.json()
-      setResult(json.data)
-
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  useEffect(() => {
-    getResults()
-    let intervalId = setInterval(getResults, 5000);
-    return () => clearInterval(intervalId)
-  }, [])
+  const result = useGetResults(poll?._id, poll?.questions[0]._id)
 
 
   return poll && result ? [poll.questions[0]].map((question) => {

@@ -4,6 +4,8 @@ import { PollRepository, ResultRepository } from "./repositories";
 
 const port = process.env.PORT ?? 8080;
 
+let USERS: string[] = []
+
 // TODO: Refactor this code into separate routes and controllers
 // TODO: Refactor the chunking of request body into a common function or a middleware
 // TODO Refactor the sending of response into a common function
@@ -69,6 +71,39 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  const usersRoute = "/api/users"
+  if (usersRoute === url) {
+    switch (method) {
+      case "GET": {
+        console.log(USERS)
+        res.writeHead(200, { 'Content-Type': 'text/json' });
+        return res.end(JSON.stringify({ data: USERS.length }));
+      }
+      case "POST": {
+        let body = '';
+        for await (const chunk of req) {
+          body += chunk.toString();
+        }
+        // TODO What happens if body user is empty
+        USERS.push(JSON.parse(body).user)
+        res.writeHead(200, { 'Content-Type': 'text/json' });
+        return res.end(JSON.stringify({ data: USERS.length }));
+      }
+      case "DELETE": {
+        let body = '';
+        for await (const chunk of req) {
+          body += chunk.toString();
+        }
+        const userSession = JSON.parse(body).user
+        // TODO: CHeck if user invalid session
+        console.log(body)
+        USERS = USERS.filter((id) => userSession === id)
+
+        res.writeHead(200, { 'Content-Type': 'text/json' });
+        return res.end(JSON.stringify({ data: USERS.length }));
+      }
+    }
+  }
 
   res.writeHead(404);
   return res.end()

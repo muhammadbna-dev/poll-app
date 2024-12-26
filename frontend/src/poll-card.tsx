@@ -1,27 +1,24 @@
 import { Button } from "@/components/ui/button"
-import { Card, CardTitle, CardContent } from "@/components/ui/card"
+import { Card, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { Poll } from "@/types"
+import { useGetResults } from "@/useGetResults"
+import { useOnlineUsersCount } from "@/useOnlineUserCount"
 
-const PollCard = ({ poll, submit }: { poll: Poll | undefined, submit: () => void }) => {
-  const generateSessionId = () => {
-    // const random = "foo"
-    const random = (Math.random() + 1).toString(36).substring(7);
-    return random
-  }
-
+const PollCard = ({ poll, submit, session }: { session: string, poll: Poll | undefined, submit: () => void }) => {
+  const result = useGetResults(poll?._id, poll?.questions[0]._id)
+  const userCount = useOnlineUsersCount()
 
   const postResponse = async (questionId: string, optionId: string) => {
-    const sessionId = generateSessionId()
     await fetch(`api/result`, {
       method: "POST",
       body: JSON.stringify({
         poll: poll?._id,
         question: questionId,
         option: optionId,
-        session: generateSessionId()
+        session: session
       })
     })
-    localStorage.setItem("session", sessionId)
+    localStorage.setItem("session", session)
     submit()
   };
 
@@ -29,11 +26,15 @@ const PollCard = ({ poll, submit }: { poll: Poll | undefined, submit: () => void
     return (
       <Card className="w-[60%] p-7 flex flex-col gap-5" key={question._id} >
         <CardTitle>{question.text}</CardTitle>
+        <CardDescription>{`User count: ${userCount}`}</CardDescription>
         <CardContent>
           <div className="flex flex-col gap-5">
             {question.options.map((option) => {
+              const optionId = option._id
+              const foundResult = result?.find(((item) => optionId === item._id))
+              const count = foundResult ? foundResult.count : 0
               return (
-                <Button variant="secondary" key={option._id} onClick={() => postResponse(question._id, option._id)}>{option.text}</Button>
+                <Button variant="secondary" key={option._id} onClick={() => postResponse(question._id, option._id)}>{`${option.text} : ${count}`}</Button>
               )
             })}
           </div>
