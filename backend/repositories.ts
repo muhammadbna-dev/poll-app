@@ -1,5 +1,5 @@
 import { IPoll, IResults, Poll, Results } from "./models"
-import mongoose from "mongoose"
+import mongoose, { ObjectId } from "mongoose"
 
 export class PollRepository {
 
@@ -24,25 +24,41 @@ export class ResultRepository {
     return await result.save()
   }
 
-  async aggregateResults(pollId: string, questionId: string) {
-    return await Results.aggregate([
-      {
-        $match: {
-          poll: new mongoose.Types.ObjectId(pollId),
-          question: new mongoose.Types.ObjectId(questionId)
-        }
-      },
+  async aggregateResults(pollId: string) {
+    const questionOptions = await Results.aggregate([
       {
         $group: {
-          _id: '$option',
-          count: { $sum: 1 },
-        }
-      },
-      {
-        $project: {
-          count: 1,
+          _id: "$question",
+          options: { $push: "$option" }
         }
       }
     ]);
+
+    const returnVal: { [questionId: string]: { [optionId: string]: number } } = {}
+    for (const item of questionOptions) {
+      const questionId = item._id.toString();
+      const options = item.options;
+
+      const optionCounts = options.reduce((prev: { [optionId: string]: number }, curr: ObjectId) => {
+        const optionId = curr.toString();
+        if (!prev?.[optionId]) {
+          prev[optionId] = 0
+        }
+        prev[optionId]++
+        return prev
+      }, {});
+
+      returnVal[questionId] = optionCounts
+    }
+
+    return returnVal
+  }
+
+  async getAnsweredQuestions(pollId: string, session: string) {
+    const results = await Results.find({
+      poll: new mongoose.Types.ObjectId(pollId),
+      session,
+    })
+    return results.map(({ question }) => question)
   }
 }

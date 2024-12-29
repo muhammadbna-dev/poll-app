@@ -1,39 +1,73 @@
-import PollCard from "@/poll-card"
-import ResultsCard from "@/results-card"
-import { Poll } from "@/types"
-import { useEffect, useState } from "react"
+import PollCard from "@/poll-card";
+import type { Poll } from "@/types";
+import { useEffect, useState } from "react";
 
-const POLL_ID = "6767e4fd2041d1c0c94f3da3"
+const POLL_ID = "676f620539d6e65986f13bac";
 
 const App = () => {
-  const [ui, setUi] = useState<"poll" | "result">("poll")
-  const [poll, setPoll] = useState<Poll>()
+	const [poll, setPoll] = useState<Poll>();
+	const [userSession, setUserSession] = useState<string>("");
 
-  // TODO: The session ID is to simulate the "user". Ideally, there should be a user and session data to track this but this will suffice
-  const checkIfUserHasSessionId = () => {
-    return !!localStorage.getItem("session")
-  }
+	const generateSessionId = () => {
+		return (Math.random() + 1).toString(36).substring(7);
+	};
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const data = await fetch(`api/poll/${POLL_ID}`)
-        const json = await data.json()
-        setPoll(json.data)
-      } catch (err) {
-        console.error(err)
-      }
-      const hasId = checkIfUserHasSessionId()
-      hasId ? setUi("result") : setUi("poll")
-    })()
-  }, [])
+	const saveOnlineUser = async () => {
+		const savedSession = localStorage.getItem("session")
+		if (savedSession) {
+			setUserSession(savedSession)
+		} else {
+			const session = generateSessionId();
+			localStorage.setItem("session", session)
+			await fetch(`api/users`, {
+				method: "POST",
+				body: JSON.stringify({
+					user: session,
+				}),
+			});
+			setUserSession(session);
+		}
+	};
 
+	useEffect(() => {
+		(async () => {
+			try {
+				await saveOnlineUser();
+				const data = await fetch(`api/poll/${POLL_ID}`);
+				const json = await data.json();
+				setPoll(json.data);
+			} catch (err) {
+				console.error(err);
+			}
+		})();
+	}, []);
 
-  if (ui === "result") {
-    return <ResultsCard poll={poll} />
-  }
+	useEffect(() => {
+		if (poll && userSession) {
+			// TODO: removeventlistener
+			addEventListener("beforeunload", async () => {
+				if (poll) {
+					await Promise.all(
+						poll.questions.map(async (question) => {
+							await fetch(`api/users/${question._id}`, {
+								method: "DELETE",
+								keepalive: true,
+								body: JSON.stringify({
+									user: userSession,
+								}),
+							});
+						}),
+					);
+				}
+			});
+		}
+	}, [poll, userSession]);
 
-  return <PollCard poll={poll} submit={() => setUi("result")} />
-}
+	if (poll) {
+		return <PollCard session={userSession} poll={poll} />;
+	}
 
-export default App
+	return <></>;
+};
+
+export default App;

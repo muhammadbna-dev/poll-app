@@ -12,8 +12,8 @@ export default defineConfig({
 	server: {
 		host: true,
 		proxy: {
-			'/api': {
-				target: 'http://backend:8080',
+			"/api": {
+				target: "http://backend:8080",
 				changeOrigin: true,
 				secure: false,
 			},

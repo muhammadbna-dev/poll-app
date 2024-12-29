@@ -43,4 +43,8 @@ const ResultsSchema = new Schema<IResults>({
   option: { type: Schema.ObjectId, ref: 'Option' },
   session: Schema.Types.String,
 })
+ResultsSchema.index(
+  { poll: 1, question: 1, session: 1 },
+  { unique: true }
+);
 export const Results = mongoose.model('Results', ResultsSchema);
